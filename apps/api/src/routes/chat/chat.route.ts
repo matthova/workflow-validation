@@ -6,7 +6,6 @@ import {
   ChatSessionSchema,
   CreateChatRequestBody,
   ErrorSchema,
-  ResumeChatQuerySchema,
 } from "./chat.schemas";
 
 import { createRouter } from "@/lib/create-app";

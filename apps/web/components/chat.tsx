@@ -9,7 +9,7 @@ export function Chat({ runId }: { runId: string }) {
   const transport = useMemo(
     () =>
       new WorkflowChatTransport<UIMessage>({
-        api: `/chat/${runId}`,
+        api: "/api/chat",
         prepareReconnectToStreamRequest() {
           // If resuming an active stream on mount, mark the session as streaming so the sidebar shows the spinner
           return { api: `/api/${runId}/resume-chat` };
