@@ -3,9 +3,9 @@ import { Chat } from "../../../components/chat";
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ runId: string }>;
 }) {
-  const { id } = await params;
+  const { runId } = await params;
 
-  return <Chat id={id} />;
+  return <Chat runId={runId} />;
 }

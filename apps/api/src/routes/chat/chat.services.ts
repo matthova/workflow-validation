@@ -1,4 +1,4 @@
-import { start } from "workflow/api";
+import { getRun, start } from "workflow/api";
 import { AppContext } from "@/lib/types";
 import { UserUIMessage } from "./chat.schemas";
 import { ResultAsync } from "neverthrow";
@@ -6,7 +6,12 @@ import { v7 } from "uuid";
 import { DurableAgent } from "@workflow/ai/agent";
 import { openai } from "@workflow/ai/openai";
 import { getWritable } from "workflow";
-import { convertToModelMessages, UIMessage, UIMessageChunk } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  UIMessage,
+  UIMessageChunk,
+} from "ai";
 import { writeFinishAndClose } from "./chat.steps";
 
 interface CreateChatResponse {
@@ -69,4 +74,16 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
   }
 
   await writeFinishAndClose();
+}
+
+/** Reconnect to an in-progress agent stream (e.g. after a page refresh).
+ *  Returns a finished-stream response if no active run exists. */
+export async function resumeChatStream(
+  ctx: AppContext,
+  runId: string
+): Promise<Response> {
+  const run = await getRun(runId);
+  const stream = run.getReadable({ startIndex: 0 });
+
+  return createUIMessageStreamResponse({ stream });
 }

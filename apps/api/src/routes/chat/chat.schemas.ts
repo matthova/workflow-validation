@@ -49,6 +49,12 @@ export const ErrorSchema = z.object({
 
 export const SuccessSchema = z.object({ success: z.boolean() });
 
+export const ChatParamsSchema = z
+  .object({
+    runId: z.string().openapi({ description: "Chat session ID" }),
+  })
+  .openapi("ChatParams");
+
 // Error status codes returned by chat route handlers (for handleError generic)
 export type CreateChatErrorStatusCodes =
   | typeof FORBIDDEN
