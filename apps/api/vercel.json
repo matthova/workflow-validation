@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ],
+  "buildCommand": "pnpm turbo build --filter=@repo/api && pnpm --filter @repo/api build:nitro",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": ".vercel/output"
+}
