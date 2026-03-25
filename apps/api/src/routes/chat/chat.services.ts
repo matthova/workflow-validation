@@ -4,7 +4,7 @@ import { ChatUIMessage, UserUIMessage } from "./chat.schemas";
 import { ResultAsync } from "neverthrow";
 import { DurableAgent } from "@workflow/ai/agent";
 import { openai } from "@workflow/ai/openai";
-import { getWritable, sleep } from "workflow";
+import { getWritable } from "workflow";
 import { v7 } from "uuid";
 import {
   convertToModelMessages,
@@ -118,6 +118,6 @@ async function fakeDbOperation({
   id: string;
 }): Promise<{ id: string }> {
   "use step";
-  await sleep(200);
+  await new Promise((r) => setTimeout(r, 200));
   return { id };
 }
