@@ -8,6 +8,7 @@ import {
 } from "./chat.schemas";
 
 import { createRouter } from "@/lib/create-app";
+import { handleChat } from "./chat.handlers";
 
 const createChatRoute = createRoute({
   tags: ["Chat"],
@@ -45,8 +46,6 @@ const createChatRoute = createRoute({
 });
 export type CreateChatRoute = typeof createChatRoute;
 
-const router = createRouter().openapi(createChatRoute, (c) => {
-  return c.json({ id: crypto.randomUUID() }, HttpStatusCodes.OK);
-});
+const router = createRouter().openapi(createChatRoute, handleChat);
 
 export default router;

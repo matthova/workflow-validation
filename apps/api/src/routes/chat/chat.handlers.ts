@@ -7,15 +7,15 @@ import { createChat } from "./chat.services";
 
 export const handleChat: AppRouteHandler<CreateChatRoute> = async (ctx) => {
   try {
-    const { message } = ctx.req.valid("json");
+    const { messages } = ctx.req.valid("json");
 
     const chatResponse = await createChat(ctx, {
-      message,
+      messages,
     });
     if (chatResponse.isErr()) {
       return handleError<CreateChatErrorStatusCodes>(ctx, chatResponse.error);
     }
-    return ctx.json({ id: chatResponse.value.sessionId }, OK);
+    return ctx.json({ runId: chatResponse.value.runId }, OK);
   } catch (error) {
     return handleError<CreateChatErrorStatusCodes>(ctx, error);
   }

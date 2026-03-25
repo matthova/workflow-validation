@@ -10,7 +10,7 @@ import { convertToModelMessages, UIMessage, UIMessageChunk } from "ai";
 import { writeFinishAndClose } from "./chat.steps";
 
 interface CreateChatResponse {
-  sessionId: string;
+  runId: string;
 }
 
 /** Create a new chat session, persist the first user message, and start the agent workflow. */
@@ -20,31 +20,23 @@ export function createChat(
 ): ResultAsync<CreateChatResponse, Error> {
   return ResultAsync.fromPromise(
     (async () => {
-      const sessionId = v7();
-      const workflowMessageId = v7();
-
-      await start(sessionWorkflow, [
-        sessionId,
+      const result = await start(sessionWorkflow, [
         {
-          workflowMessageId,
+          messages,
         },
       ]);
 
-      return { sessionId };
+      return { runId: result.runId };
     })(),
     (error) => (error instanceof Error ? error : new Error(String(error)))
   );
 }
 
 interface SessionWorkflowParams {
-  workflowMessageId: string;
-  messages: UIMessage[];
+  messages: UserUIMessage[];
 }
 
-export async function sessionWorkflow(
-  sessionId: string,
-  params: SessionWorkflowParams
-) {
+export async function sessionWorkflow(params: SessionWorkflowParams) {
   "use workflow";
 
   const agent = new DurableAgent({
@@ -67,12 +59,12 @@ export async function sessionWorkflow(
 
   if (!newAssistantMessage || uiMessages.length !== 1) {
     throw new Error(
-      `[sessionWorkflow] Expected 1 assistant message, got ${uiMessages.length} for session ${sessionId}`
+      `[sessionWorkflow] Expected 1 assistant message, got ${uiMessages.length}`
     );
   }
   if (newAssistantMessage.role !== "assistant") {
     throw new Error(
-      `[sessionWorkflow] Expected assistant message, got ${newAssistantMessage.role} for session ${sessionId}`
+      `[sessionWorkflow] Expected assistant message, got ${newAssistantMessage.role}`
     );
   }
 

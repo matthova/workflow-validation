@@ -33,13 +33,13 @@ export type UserUIMessage = z.infer<typeof userUIMessageSchema>;
 
 export const CreateChatRequestBody = z
   .object({
-    message: userUIMessageSchema,
+    messages: z.array(userUIMessageSchema),
   })
   .openapi("CreateChatRequestBody");
 
 export const ChatSessionSchema = z
   .object({
-    id: z.string().uuid(),
+    runId: z.string(),
   })
   .openapi("ChatSession");
 
