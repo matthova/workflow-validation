@@ -4,7 +4,8 @@ import { ChatUIMessage, UserUIMessage } from "./chat.schemas";
 import { ResultAsync } from "neverthrow";
 import { DurableAgent } from "@workflow/ai/agent";
 import { openai } from "@workflow/ai/openai";
-import { getWritable } from "workflow";
+import { getWritable, sleep } from "workflow";
+import { v7 } from "uuid";
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
@@ -64,6 +65,8 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
     tools: {},
   });
 
+  await fakeDbOperation({ id: v7() });
+
   const result = await agent.stream({
     messages: await convertToModelMessages(
       params.messages as unknown as UIMessage[]
@@ -74,6 +77,8 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
     sendFinish: false,
     preventClose: true,
   });
+
+  await fakeDbOperation({ id: v7() });
 
   // Validate the agent produced exactly one assistant message.
   const uiMessages = (result.uiMessages ?? []) as UIMessage[];
@@ -90,6 +95,8 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
     );
   }
 
+  await fakeDbOperation({ id: v7() });
+
   await writeFinishAndClose();
 }
 
@@ -103,4 +110,14 @@ export async function resumeChatStream(
   const stream = run.getReadable({ startIndex: 0 });
 
   return createUIMessageStreamResponse({ stream });
+}
+
+async function fakeDbOperation({
+  id,
+}: {
+  id: string;
+}): Promise<{ id: string }> {
+  "use step";
+  await sleep(200);
+  return { id };
 }
