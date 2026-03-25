@@ -10,5 +10,12 @@ export const GET = async (
     `${process.env.NEXT_PUBLIC_API_URL}/chat/${runId}/stream`
   );
 
-  return response;
+  const headers = new Headers(response.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 };
