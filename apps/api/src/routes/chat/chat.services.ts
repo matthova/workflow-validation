@@ -1,0 +1,80 @@
+import { start } from "workflow/api";
+import { AppContext } from "@/lib/types";
+import { UserUIMessage } from "./chat.schemas";
+import { ResultAsync } from "neverthrow";
+import { v7 } from "uuid";
+import { DurableAgent } from "@workflow/ai/agent";
+import { openai } from "@workflow/ai/openai";
+import { getWritable } from "workflow";
+import { convertToModelMessages, UIMessage, UIMessageChunk } from "ai";
+import { writeFinishAndClose } from "./chat.steps";
+
+interface CreateChatResponse {
+  sessionId: string;
+}
+
+/** Create a new chat session, persist the first user message, and start the agent workflow. */
+export function createChat(
+  ctx: AppContext,
+  { messages }: { messages: UserUIMessage[] }
+): ResultAsync<CreateChatResponse, Error> {
+  return ResultAsync.fromPromise(
+    (async () => {
+      const sessionId = v7();
+      const workflowMessageId = v7();
+
+      await start(sessionWorkflow, [
+        sessionId,
+        {
+          workflowMessageId,
+        },
+      ]);
+
+      return { sessionId };
+    })(),
+    (error) => (error instanceof Error ? error : new Error(String(error)))
+  );
+}
+
+interface SessionWorkflowParams {
+  workflowMessageId: string;
+  messages: UIMessage[];
+}
+
+export async function sessionWorkflow(
+  sessionId: string,
+  params: SessionWorkflowParams
+) {
+  "use workflow";
+
+  const agent = new DurableAgent({
+    model: openai("gpt-5.4"),
+    tools: {},
+  });
+
+  const result = await agent.stream({
+    messages: await convertToModelMessages(params.messages),
+    writable: getWritable<UIMessageChunk<UIMessage>>(),
+    collectUIMessages: true,
+    sendStart: false,
+    sendFinish: false,
+    preventClose: true,
+  });
+
+  // 3. Validate the agent produced exactly one assistant message.
+  const uiMessages = (result.uiMessages ?? []) as UIMessage[];
+  const newAssistantMessage = uiMessages.at(0);
+
+  if (!newAssistantMessage || uiMessages.length !== 1) {
+    throw new Error(
+      `[sessionWorkflow] Expected 1 assistant message, got ${uiMessages.length} for session ${sessionId}`
+    );
+  }
+  if (newAssistantMessage.role !== "assistant") {
+    throw new Error(
+      `[sessionWorkflow] Expected assistant message, got ${newAssistantMessage.role} for session ${sessionId}`
+    );
+  }
+
+  await writeFinishAndClose();
+}

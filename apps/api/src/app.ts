@@ -1,12 +1,13 @@
 import configureOpenAPI from "@/lib/configure-open-api";
 import createApp from "@/lib/create-app";
+import chat from "@/routes/chat/chat.route";
 import index from "@/routes/index.route";
 
 const app = createApp();
 
 configureOpenAPI(app);
 
-const routes = [index] as const;
+const routes = [index, chat] as const;
 
 routes.forEach((route) => {
   app.route("/", route);
