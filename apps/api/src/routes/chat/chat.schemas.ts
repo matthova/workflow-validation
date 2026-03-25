@@ -7,7 +7,7 @@ import {
 
 export const metadataSchema = z.object({}).passthrough();
 export const messageBase = {
-  id: z.uuid(),
+  id: z.string(),
   metadata: metadataSchema.optional(),
 };
 export const textUIPartSchema = z.object({
@@ -31,11 +31,31 @@ export const userUIMessageSchema = z.object({
 });
 export type UserUIMessage = z.infer<typeof userUIMessageSchema>;
 
+export const assistantPartSchema = z.object({ type: z.string() }).passthrough();
+
+export const assistantUIMessageSchema = z.object({
+  ...messageBase,
+  role: z.literal("assistant"),
+  parts: z.array(assistantPartSchema),
+});
+
+export const chatUIMessageSchema = z.union([
+  userUIMessageSchema,
+  assistantUIMessageSchema,
+]);
+export type ChatUIMessage = z.infer<typeof chatUIMessageSchema>;
+
 export const CreateChatRequestBody = z
   .object({
     messages: z.array(userUIMessageSchema),
   })
   .openapi("CreateChatRequestBody");
+
+export const SendMessageRequestBody = z
+  .object({
+    messages: z.array(chatUIMessageSchema),
+  })
+  .openapi("SendMessageRequestBody");
 
 export const ChatSessionSchema = z
   .object({

@@ -1,8 +1,7 @@
 import { getRun, start } from "workflow/api";
 import { AppContext } from "@/lib/types";
-import { UserUIMessage } from "./chat.schemas";
+import { ChatUIMessage, UserUIMessage } from "./chat.schemas";
 import { ResultAsync } from "neverthrow";
-import { v7 } from "uuid";
 import { DurableAgent } from "@workflow/ai/agent";
 import { openai } from "@workflow/ai/openai";
 import { getWritable } from "workflow";
@@ -37,8 +36,24 @@ export function createChat(
   );
 }
 
+/** Start a new workflow run for the given messages and return a streaming response. */
+export async function sendChatMessages(
+  ctx: AppContext,
+  { messages }: { messages: ChatUIMessage[] }
+): Promise<Response> {
+  const run = await start(sessionWorkflow, [{ messages }]);
+  const stream = run.getReadable({ startIndex: 0 });
+
+  return createUIMessageStreamResponse({
+    stream,
+    headers: {
+      "x-workflow-run-id": run.runId,
+    },
+  });
+}
+
 interface SessionWorkflowParams {
-  messages: UserUIMessage[];
+  messages: ChatUIMessage[];
 }
 
 export async function sessionWorkflow(params: SessionWorkflowParams) {
@@ -50,7 +65,9 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
   });
 
   const result = await agent.stream({
-    messages: await convertToModelMessages(params.messages),
+    messages: await convertToModelMessages(
+      params.messages as unknown as UIMessage[]
+    ),
     writable: getWritable<UIMessageChunk<UIMessage>>(),
     collectUIMessages: true,
     sendStart: false,
@@ -58,7 +75,7 @@ export async function sessionWorkflow(params: SessionWorkflowParams) {
     preventClose: true,
   });
 
-  // 3. Validate the agent produced exactly one assistant message.
+  // Validate the agent produced exactly one assistant message.
   const uiMessages = (result.uiMessages ?? []) as UIMessage[];
   const newAssistantMessage = uiMessages.at(0);
 
