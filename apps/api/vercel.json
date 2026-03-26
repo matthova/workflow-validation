@@ -6,5 +6,6 @@
     }
   ],
   "buildCommand": "pnpm turbo build --filter=@repo/api",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "public"
 }
