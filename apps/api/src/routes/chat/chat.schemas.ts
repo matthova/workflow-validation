@@ -45,11 +45,29 @@ export const chatUIMessageSchema = z.union([
 ]);
 export type ChatUIMessage = z.infer<typeof chatUIMessageSchema>;
 
+export const CreateChatRequestBody = z
+  .object({
+    messages: z.array(userUIMessageSchema),
+  })
+  .openapi("CreateChatRequestBody");
+
 export const SendMessageRequestBody = z
   .object({
     messages: z.array(chatUIMessageSchema),
   })
   .openapi("SendMessageRequestBody");
+
+export const ChatSessionSchema = z
+  .object({
+    id: z.string(),
+  })
+  .openapi("ChatSession");
+
+export const ChatParamsSchema = z
+  .object({
+    id: z.string().openapi({ description: "Chat session ID" }),
+  })
+  .openapi("ChatParams");
 
 export const ErrorSchema = z.object({
   error: z.string(),

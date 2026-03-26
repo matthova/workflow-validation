@@ -1,14 +1,41 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useState } from "react";
+import { DefaultChatTransport } from "ai";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-export function Chat() {
+export function Chat({ id }: { id: string }) {
   const [input, setInput] = useState("");
 
-  const { messages, sendMessage } = useChat({
-    api: "/api/chat",
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: `/api/chat/${id}/stream`,
+        prepareReconnectToStreamRequest() {
+          return { api: `/api/chat/${id}/stream` };
+        },
+      }),
+    [id]
+  );
+
+  const { messages, sendMessage, resumeStream } = useChat({
+    transport,
+    resume: false,
   });
+
+  const resumeQueue = useRef(Promise.resolve());
+  useEffect(() => {
+    let cancelled = false;
+    resumeQueue.current = resumeQueue.current
+      .then(async () => {
+        if (cancelled) return;
+        await resumeStream();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [id, resumeStream]);
 
   return (
     <div>
