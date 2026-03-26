@@ -45,35 +45,17 @@ export const chatUIMessageSchema = z.union([
 ]);
 export type ChatUIMessage = z.infer<typeof chatUIMessageSchema>;
 
-export const CreateChatRequestBody = z
-  .object({
-    messages: z.array(userUIMessageSchema),
-  })
-  .openapi("CreateChatRequestBody");
-
 export const SendMessageRequestBody = z
   .object({
     messages: z.array(chatUIMessageSchema),
   })
   .openapi("SendMessageRequestBody");
 
-export const ChatSessionSchema = z
-  .object({
-    runId: z.string(),
-  })
-  .openapi("ChatSession");
-
 export const ErrorSchema = z.object({
   error: z.string(),
 });
 
 export const SuccessSchema = z.object({ success: z.boolean() });
-
-export const ChatParamsSchema = z
-  .object({
-    runId: z.string().openapi({ description: "Chat session ID" }),
-  })
-  .openapi("ChatParams");
 
 // Error status codes returned by chat route handlers (for handleError generic)
 export type CreateChatErrorStatusCodes =

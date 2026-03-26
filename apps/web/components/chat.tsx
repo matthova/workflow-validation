@@ -1,66 +1,14 @@
 "use client";
 
-import { WorkflowChatTransport } from "@workflow/ai";
+import { useChat } from "@ai-sdk/react";
+import { useState } from "react";
 
-import { UIMessage, useChat } from "@ai-sdk/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-export function Chat({ runId: initialRunId }: { runId: string }) {
-  const [runId, setRunId] = useState(initialRunId);
-
-  const transport = useMemo(
-    () =>
-      new WorkflowChatTransport<UIMessage>({
-        api: "/api/chat",
-        prepareSendMessagesRequest({ messages }) {
-          return {
-            api: `/api/chat/${runId}/message`,
-            body: { messages },
-          };
-        },
-        onChatSendMessage(response) {
-          const newRunId = response.headers.get("x-workflow-run-id");
-          if (newRunId) {
-            setRunId(newRunId);
-            window.history.replaceState(null, "", `/chat/${newRunId}`);
-          }
-        },
-        prepareReconnectToStreamRequest() {
-          return { api: `/api/chat/${runId}/stream` };
-        },
-      }),
-    [runId]
-  );
-
+export function Chat() {
   const [input, setInput] = useState("");
 
-  // Do not pass workflow `runId` as `useChat` id: each assistant turn returns a new
-  // `x-workflow-run-id`, and @ai-sdk/react recreates Chat state when `id` changes,
-  // which clears message history. `runId` state is still used for API paths below.
-  const { messages, sendMessage, resumeStream } = useChat({
-      transport,
-      // `resume: true` runs in useEffect without deduping; React Strict Mode invokes that
-      // effect twice, which starts two concurrent resume streams on one Chat. They share
-      // `activeResponse`, so the first request's `finally` clears it while the second is
-      // still running → TypeError reading `activeResponse.state` in the AI SDK.
-      resume: false,
-    });
-
-  const resumeQueue = useRef(Promise.resolve());
-  useEffect(() => {
-    let cancelled = false;
-    resumeQueue.current = resumeQueue.current
-      .then(async () => {
-        if (cancelled) return;
-        await resumeStream();
-      })
-      .catch(() => {
-        // Keep the chain usable if a resume attempt rejects unexpectedly
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [initialRunId, resumeStream]);
+  const { messages, sendMessage } = useChat({
+    api: "/api/chat",
+  });
 
   return (
     <div>
