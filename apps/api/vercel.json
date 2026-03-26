@@ -6,6 +6,5 @@
     }
   ],
   "buildCommand": "pnpm turbo build --filter=@repo/api",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "outputDirectory": ".vercel/output"
+  "installCommand": "pnpm install --frozen-lockfile"
 }
