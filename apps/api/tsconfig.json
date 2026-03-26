@@ -17,6 +17,7 @@
     "outDir": "./dist",
     "skipLibCheck": true
   },
+  "exclude": ["api"],
   "tsc-alias": {
     "resolveFullPaths": true
   }
