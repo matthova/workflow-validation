@@ -21,7 +21,7 @@ export async function startWorker(): Promise<Worker> {
     connection,
     namespace,
     taskQueue: TASK_QUEUE,
-    workflowsPath: path.resolve(__dirname, "./workflows"),
+    workflowsPath: path.resolve(__dirname, "./workflows.ts"),
     activities,
   });
 
