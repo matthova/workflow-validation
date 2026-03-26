@@ -12,10 +12,21 @@ interface BufferedStream {
 
 const streams = new Map<string, BufferedStream>();
 
+/** Resolvers waiting for a stream to be created (used when Temporal activities
+ *  create the buffer asynchronously after a signal). */
+const creationWaiters = new Map<string, Array<() => void>>();
+
 /** Start buffering a ReadableStream<Uint8Array> under the given id. */
 export function bufferStream(id: string, source: ReadableStream<Uint8Array>) {
   const entry: BufferedStream = { chunks: [], done: false, waiters: new Map() };
   streams.set(id, entry);
+
+  // Notify anyone waiting for this stream to be created.
+  const waiters = creationWaiters.get(id);
+  if (waiters) {
+    for (const wake of waiters) wake();
+    creationWaiters.delete(id);
+  }
 
   const reader = source.getReader();
   (async () => {
@@ -72,4 +83,33 @@ export function getStream(
 
 export function hasStream(id: string): boolean {
   return streams.has(id);
+}
+
+/**
+ * Wait until a buffer with the given id is created.
+ * Resolves immediately if it already exists.
+ */
+export function waitForStream(id: string, timeoutMs = 10_000): Promise<void> {
+  if (streams.has(id)) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      // Clean up our waiter on timeout.
+      const arr = creationWaiters.get(id);
+      if (arr) {
+        const idx = arr.indexOf(done);
+        if (idx >= 0) arr.splice(idx, 1);
+        if (arr.length === 0) creationWaiters.delete(id);
+      }
+      reject(new Error(`Timeout waiting for stream ${id}`));
+    }, timeoutMs);
+
+    function done() {
+      clearTimeout(timer);
+      resolve();
+    }
+
+    if (!creationWaiters.has(id)) creationWaiters.set(id, []);
+    creationWaiters.get(id)!.push(done);
+  });
 }

@@ -25,6 +25,9 @@ const EnvSchema = z.object({
     "trace",
     "silent",
   ]),
+  TEMPORAL_ADDRESS: z.string().default("localhost:7233"),
+  TEMPORAL_NAMESPACE: z.string().default("default"),
+  TEMPORAL_API_KEY: z.string().default(""),
 });
 
 export type env = z.infer<typeof EnvSchema>;

@@ -1,62 +1,55 @@
 import { AppContext } from "@/lib/types";
 import { ChatUIMessage } from "./chat.schemas";
-import { openai } from "@ai-sdk/openai";
+import { getStream, waitForStream } from "./chat.store";
+import { getTemporalClient } from "@/temporal/client";
+import { TASK_QUEUE } from "@/temporal/worker";
 import {
-  convertToModelMessages,
-  createUIMessageStreamResponse,
-  streamText,
-  UIMessage,
-} from "ai";
+  addMessageSignal,
+  chatWorkflow,
+} from "@/temporal/workflows";
 import { v7 } from "uuid";
-import { bufferStream, getStream } from "./chat.store";
 
-/** Create a new chat: start streaming in the background and return the id. */
+/** Create a new chat: start a Temporal workflow and return the id. */
 export async function createChat(
   _ctx: AppContext,
   { messages }: { messages: ChatUIMessage[] }
 ): Promise<{ id: string }> {
   const id = v7();
 
-  const result = streamText({
-    model: openai("gpt-5.4-nano"),
-    messages: await convertToModelMessages(messages as unknown as UIMessage[]),
+  const client = await getTemporalClient();
+  await client.workflow.start(chatWorkflow, {
+    workflowId: `chat-${id}`,
+    taskQueue: TASK_QUEUE,
+    args: [id, messages],
   });
-
-  const response = createUIMessageStreamResponse({
-    stream: result.toUIMessageStream(),
-  });
-
-  bufferStream(id, response.body!);
 
   return { id };
 }
 
-/** Send follow-up messages — starts a new stream under a new id. */
+/** Send follow-up messages — signals the workflow to generate a new response. */
 export async function sendChatMessages(
   _ctx: AppContext,
-  { messages }: { messages: ChatUIMessage[] }
+  { chatId, messages }: { chatId: string; messages: ChatUIMessage[] }
 ): Promise<{ id: string; response: Response }> {
-  const id = v7();
+  const streamId = v7();
 
-  const result = streamText({
-    model: openai("gpt-4o"),
-    messages: await convertToModelMessages(messages as unknown as UIMessage[]),
-  });
+  const client = await getTemporalClient();
+  const handle = client.workflow.getHandle(`chat-${chatId}`);
+  await handle.signal(addMessageSignal, { streamId, messages });
 
-  const response = createUIMessageStreamResponse({
-    stream: result.toUIMessageStream(),
-    headers: { "x-chat-id": id },
-  });
+  // The activity will create the buffer asynchronously — wait for it.
+  await waitForStream(streamId);
 
-  // Tee: one branch goes to the buffer, the other to the client.
-  const [forBuffer, forClient] = response.body!.tee();
-  bufferStream(id, forBuffer);
-
+  const stream = getStream(streamId);
   return {
-    id,
-    response: new Response(forClient, {
-      status: response.status,
-      headers: response.headers,
+    id: streamId,
+    response: new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "x-chat-id": streamId,
+      },
     }),
   };
 }
@@ -67,6 +60,10 @@ export async function resumeChatStream(
   id: string,
   startIndex = 0
 ): Promise<Response> {
+  // The workflow activity may not have created the buffer yet (e.g. the client
+  // navigated to /chat/:id faster than the worker picked up the task).
+  await waitForStream(id);
+
   const stream = getStream(id, startIndex);
   return new Response(stream, {
     headers: {

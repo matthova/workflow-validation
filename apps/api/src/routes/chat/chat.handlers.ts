@@ -29,8 +29,9 @@ export const handleSendMessage: AppRouteHandler<SendMessageRoute> = async (
   ctx
 ) => {
   try {
+    const { id: chatId } = ctx.req.valid("param");
     const { messages } = ctx.req.valid("json");
-    const { response } = await sendChatMessages(ctx, { messages });
+    const { response } = await sendChatMessages(ctx, { chatId, messages });
     return response;
   } catch (error) {
     return handleError<CreateChatErrorStatusCodes>(ctx, error);
